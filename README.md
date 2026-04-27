@@ -1,8 +1,8 @@
 # Vanguard Galaxy Loot Tint (VGLootTint)
 
-A BepInEx plugin for [Vanguard Galaxy](https://store.steampowered.com/app/3471800/) that tints the floating "+1 Item" pickup notification by item rarity. Standard items keep the vanilla colour; Enhanced and rarer drops light up in their rarity colour, so a Legendary salvage in the middle of a stream of common ore is impossible to miss.
-
 ![Standard "+1 Corebuster Charge" stays vanilla white, Enhanced "+1 Railgun Mk.VII" tinted blue](docs/screenshots/pickup-tint.png)
+
+A BepInEx plugin for [Vanguard Galaxy](https://store.steampowered.com/app/3471800/) that tints the floating "+1 Item" pickup notification by item rarity. Standard items keep the vanilla colour; Enhanced and rarer drops light up in their rarity colour, so a Legendary salvage in the middle of a stream of common ore is impossible to miss.
 
 - **Reads from the game's own rarity palette** — Enhanced / HighGrade / Exotic / Legendary use exactly the same colours the inventory tooltips and equipment cards use, via `Source.Util.RarityExtensions.GetColor`. No hardcoded hex values to drift from the game.
 - **Standard rarity untouched** — the most common pickups still look identical to vanilla, so coloured popups are a real signal, not noise.
