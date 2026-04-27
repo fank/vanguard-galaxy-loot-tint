@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>VGLootTint</AssemblyName>
+    <Product>Vanguard Galaxy Loot Tint</Product>
+    <Version>0.1.0</Version>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <RootNamespace>VGLootTint</RootNamespace>
+    <RestoreAdditionalProjectSources>
+      https://api.nuget.org/v3/index.json;
+      https://nuget.bepinex.dev/v3/index.json;
+      https://nuget.samboy.dev/v3/index.json
+    </RestoreAdditionalProjectSources>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all" />
+    <PackageReference Include="BepInEx.Core" Version="5.*" />
+    <PackageReference Include="BepInEx.PluginInfoProps" Version="2.*" />
+    <PackageReference Include="UnityEngine.Modules" Version="6000.2.6" IncludeAssets="compile" />
+    <!-- Pinned to 2.10.x: BepInEx 5 ships HarmonyX 2.10, and 2.16 adds a
+         transitive dep on MonoMod.Backports that BepInEx 5 doesn't load at
+         runtime (FileNotFoundException on plugin startup). -->
+    <PackageReference Include="HarmonyX" Version="2.10.*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>lib/Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- TextMeshPro ships with Unity but isn't in UnityEngine.Modules. Needed for
+         TextMeshPro (the type of FloatingInfoText.numberText, the field whose
+         .color we tint). -->
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>lib/Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

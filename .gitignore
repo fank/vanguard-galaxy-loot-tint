@@ -1,0 +1,35 @@
+# Build artifacts
+bin/
+obj/
+*.user
+
+# IDE
+.vs/
+.idea/
+*.sln.iml
+
+# Plugin's compile-time references
+# - Assembly-CSharp.dll: publicized STUB of the game's assembly (method
+#   signatures only, no IL bodies). Committed so CI can build.
+# - Unity.TextMeshPro.dll: publicized Unity runtime stub, required because
+#   the patch touches FloatingInfoText.numberText (TextMeshPro). Also committed.
+# Regenerate both after game updates via:
+#   assembly-publicizer --strip <game>/Assembly-CSharp.dll     -o VGLootTint/lib/Assembly-CSharp.dll
+#   assembly-publicizer --strip <game>/Unity.TextMeshPro.dll   -o VGLootTint/lib/Unity.TextMeshPro.dll
+# --strip is REQUIRED: it replaces every method body with `throw null;` so the
+# committed DLL carries only type metadata — no game logic, no Unity runtime
+# code. Running the tool WITHOUT --strip leaves the full proprietary IL intact,
+# which we can't legally redistribute.
+VGLootTint/lib/*.dll
+VGLootTint/lib/*.pdb
+!VGLootTint/lib/Assembly-CSharp.dll
+!VGLootTint/lib/Unity.TextMeshPro.dll
+
+# Local overrides
+*.local
+
+# Claude Code runtime state
+.claude/
+
+# Release staging artifacts produced by the release workflow
+dist/
