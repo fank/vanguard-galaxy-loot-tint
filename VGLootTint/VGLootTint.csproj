@@ -38,6 +38,13 @@
       <HintPath>lib/Unity.TextMeshPro.dll</HintPath>
       <Private>false</Private>
     </Reference>
+    <!-- TextMeshPro inherits from UnityEngine.UI.MaskableGraphic, so the
+         compiler needs UnityEngine.UI on the reference path even though we
+         don't touch its types directly. -->
+    <Reference Include="UnityEngine.UI">
+      <HintPath>lib/UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
 </Project>

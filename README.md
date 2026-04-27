@@ -45,10 +45,11 @@ The lookup table is built lazily once and cached for the session — `InventoryI
 
 ## Build
 
-The repo commits **publicized stubs** of two game-specific assemblies at `VGLootTint/lib/`:
+The repo commits **publicized stubs** of three game-specific assemblies at `VGLootTint/lib/`:
 
 - `Assembly-CSharp.dll` — for `FloatingInfoText`, `InfoType`, `InventoryItemType`, `Rarity`, `RarityExtensions`.
 - `Unity.TextMeshPro.dll` — for `TextMeshPro` (the type of `FloatingInfoText.numberText`).
+- `UnityEngine.UI.dll` — compile-time only; `TextMeshPro` inherits from `MaskableGraphic`, which lives in this assembly.
 
 These are method-signature-only stubs (every IL body replaced with `throw null;` by `assembly-publicizer --strip`), legal to redistribute, and enough to compile against. The real runtime takes over in-game.
 
@@ -60,8 +61,9 @@ make deploy     # build + copy to BepInEx/plugins (WSL/Steam path; edit Makefile
 To regenerate the stubs after a game update:
 
 ```bash
-assembly-publicizer --strip <game>/VanguardGalaxy_Data/Managed/Assembly-CSharp.dll  -o VGLootTint/lib/Assembly-CSharp.dll
+assembly-publicizer --strip <game>/VanguardGalaxy_Data/Managed/Assembly-CSharp.dll   -o VGLootTint/lib/Assembly-CSharp.dll
 assembly-publicizer --strip <game>/VanguardGalaxy_Data/Managed/Unity.TextMeshPro.dll -o VGLootTint/lib/Unity.TextMeshPro.dll
+assembly-publicizer --strip <game>/VanguardGalaxy_Data/Managed/UnityEngine.UI.dll    -o VGLootTint/lib/UnityEngine.UI.dll
 ```
 
 `--strip` is required — without it, the committed DLLs would carry the proprietary IL bodies, which can't be redistributed.

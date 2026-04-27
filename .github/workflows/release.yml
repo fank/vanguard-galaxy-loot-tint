@@ -42,7 +42,7 @@ jobs:
       - name: Verify publicized references are committed
         run: |
           missing=0
-          for stub in Assembly-CSharp.dll Unity.TextMeshPro.dll; do
+          for stub in Assembly-CSharp.dll Unity.TextMeshPro.dll UnityEngine.UI.dll; do
             path="VGLootTint/lib/$stub"
             if [ ! -s "$path" ]; then
               echo "::error::$path is missing or empty. Regenerate via 'assembly-publicizer --strip <game>/$stub -o $path' and commit. (--strip is required.)"

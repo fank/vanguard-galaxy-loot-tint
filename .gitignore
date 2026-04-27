@@ -13,9 +13,13 @@ obj/
 #   signatures only, no IL bodies). Committed so CI can build.
 # - Unity.TextMeshPro.dll: publicized Unity runtime stub, required because
 #   the patch touches FloatingInfoText.numberText (TextMeshPro). Also committed.
-# Regenerate both after game updates via:
+# - UnityEngine.UI.dll: required for compilation only (TextMeshPro inherits
+#   from MaskableGraphic which lives there). The patch doesn't touch UI types
+#   directly. Also committed.
+# Regenerate all three after game updates via:
 #   assembly-publicizer --strip <game>/Assembly-CSharp.dll     -o VGLootTint/lib/Assembly-CSharp.dll
 #   assembly-publicizer --strip <game>/Unity.TextMeshPro.dll   -o VGLootTint/lib/Unity.TextMeshPro.dll
+#   assembly-publicizer --strip <game>/UnityEngine.UI.dll      -o VGLootTint/lib/UnityEngine.UI.dll
 # --strip is REQUIRED: it replaces every method body with `throw null;` so the
 # committed DLL carries only type metadata — no game logic, no Unity runtime
 # code. Running the tool WITHOUT --strip leaves the full proprietary IL intact,
@@ -24,6 +28,7 @@ VGLootTint/lib/*.dll
 VGLootTint/lib/*.pdb
 !VGLootTint/lib/Assembly-CSharp.dll
 !VGLootTint/lib/Unity.TextMeshPro.dll
+!VGLootTint/lib/UnityEngine.UI.dll
 
 # Local overrides
 *.local
