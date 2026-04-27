@@ -26,7 +26,7 @@ public class Plugin : BaseUnityPlugin
         Log = Logger;
 
         _harmony = new Harmony(PluginGuid);
-        _harmony.PatchAll(typeof(Patches.PickupNotificationPatches));
+        _harmony.PatchAll();
 
         Log.LogInfo($"{PluginName} v{PluginVersion} loaded ({_harmony.GetPatchedMethods().Count()} patches)");
     }

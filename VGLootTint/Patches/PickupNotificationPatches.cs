@@ -1,9 +1,8 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using Behaviour.Item;
 using Behaviour.UI;
 using HarmonyLib;
+using Source.Data;
 using Source.Item;
 using Source.Util;
 using TMPro;
@@ -11,75 +10,96 @@ using UnityEngine;
 
 namespace VGLootTint.Patches;
 
-[HarmonyPatch(typeof(FloatingInfoText), nameof(FloatingInfoText.Show))]
+// Two-stage patch:
+//
+//   1. AbstractUnitData.AddCargo runs with the actual InventoryItemType ref
+//      (which carries the rarity). It then calls UIInfoTextParent.ShowPickupText
+//      with item.displayName — collapsing the rich item ref down to a string
+//      before the floating text is instantiated. So we PREFIX AddCargo to stash
+//      the item's rarity in a static field.
+//
+//   2. FloatingInfoText.Show is the next ring out: it builds the actual UI row.
+//      We POSTFIX it, read the stashed rarity, and tint the TMP text's color
+//      for InfoType.PICKUP only.
+//
+// Stash → consume → clear, all on the Unity main thread, so a static field is
+// safe. We clear in a finally on the AddCargo postfix in case the call chain
+// short-circuits and Show never fires (e.g. SpaceStationInterior is open),
+// otherwise the next pickup would inherit the previous item's rarity.
+//
+// We can't just look item.displayName up against InventoryItemType.allItems
+// because equipment names like "Railgun Mk.VII" are computed dynamically from
+// base + level + manufacturer; the displayName captured at static-init time
+// doesn't match what the player actually sees at pickup.
 public static class PickupNotificationPatches
 {
-    // The publicized stub lies about access on these — the runtime DLL keeps
-    // FloatingInfoText.numberText private ([SerializeField]) and likely keeps
-    // InventoryItemType.allItems private too. Direct compile-time access throws
-    // FieldAccessException under Mono. Reach them via AccessTools (cached
-    // delegate, hot-path safe) once at static init.
+    // Publicized stub exposes FloatingInfoText.numberText as a public field, but
+    // it's [SerializeField] and private at runtime — direct access throws
+    // FieldAccessException under Mono. Cached delegate reaches it without
+    // hitting the per-call reflection cost.
     private static readonly AccessTools.FieldRef<FloatingInfoText, TextMeshPro> _numberTextRef =
         AccessTools.FieldRefAccess<FloatingInfoText, TextMeshPro>("numberText");
 
-    // Cache: item displayName (translation key) → rarity. Built lazily on first
-    // miss. allItems is loaded once at game startup, so the cache is valid for
-    // the session. Multiple displayNames mapping to the same key is unusual; in
-    // that case the first wins.
-    private static Dictionary<string, Rarity>? _rarityByDisplayName;
+    private static Rarity? _pendingRarity;
 
-    public static void Postfix(FloatingInfoText __instance)
+    [HarmonyPatch(typeof(AbstractUnitData), nameof(AbstractUnitData.AddCargo))]
+    public static class AddCargoPatch
     {
-        try
+        public static void Prefix(InventoryItemType item)
         {
-            if (__instance.type != InfoType.PICKUP) return;
-
-            string postfix = __instance.postfix;
-            if (string.IsNullOrEmpty(postfix)) return;
-
-            if (!TryResolveRarity(postfix, out Rarity rarity)) return;
-
-            // Standard rarity stays vanilla (whatever color SetAttributesForType
-            // already assigned, typically xpColor) — only tint Enhanced+ so the
-            // common case is byte-identical to vanilla and rarer drops stand out.
-            if (rarity == Rarity.Standard) return;
-
-            var text = _numberTextRef(__instance);
-            if (text == null) return;
-            text.color = rarity.GetColor();
-        }
-        catch (Exception e)
-        {
-            Plugin.Log.LogError($"VGLootTint: {e}");
-        }
-    }
-
-    private static bool TryResolveRarity(string displayName, out Rarity rarity)
-    {
-        var cache = _rarityByDisplayName ?? BuildCache();
-        return cache.TryGetValue(displayName, out rarity);
-    }
-
-    private static Dictionary<string, Rarity> BuildCache()
-    {
-        var cache = new Dictionary<string, Rarity>(StringComparer.Ordinal);
-        // allItems is a static field — public on the publicized stub but
-        // possibly private at runtime. Pull it via reflection to be safe; this
-        // runs once per session.
-        var allItemsRaw = AccessTools.Field(typeof(InventoryItemType), "allItems")?.GetValue(null);
-        if (allItemsRaw is IDictionary dict)
-        {
-            foreach (DictionaryEntry entry in dict)
+            try
             {
-                if (entry.Value is not InventoryItemType item) continue;
-                if (string.IsNullOrEmpty(item.displayName)) continue;
-                if (!cache.ContainsKey(item.displayName))
-                {
-                    cache[item.displayName] = item.rarity;
-                }
+                _pendingRarity = item != null ? item.rarity : (Rarity?)null;
+            }
+            catch (Exception e)
+            {
+                _pendingRarity = null;
+                Plugin.Log.LogError($"VGLootTint AddCargoPatch.Prefix: {e}");
             }
         }
-        _rarityByDisplayName = cache;
-        return cache;
+
+        public static void Postfix()
+        {
+            // If the cargo add ran but the pickup notification never fired
+            // (e.g. station interior, off-screen units), clear the stash so the
+            // next genuine pickup doesn't inherit a stale rarity.
+            _pendingRarity = null;
+        }
+    }
+
+    [HarmonyPatch(typeof(FloatingInfoText), nameof(FloatingInfoText.Show))]
+    public static class FloatingInfoTextShowPatch
+    {
+        public static void Postfix(FloatingInfoText __instance)
+        {
+            try
+            {
+                if (__instance.type != InfoType.PICKUP) return;
+                if (_pendingRarity is not Rarity rarity) return;
+
+                // Consume the stash regardless of branch so a non-tinted pickup
+                // (Standard) doesn't bleed onto the next call.
+                _pendingRarity = null;
+
+                if (rarity == Rarity.Standard) return;
+
+                var text = _numberTextRef(__instance);
+                if (text == null) return;
+
+                Color color = rarity.GetColor();
+                text.color = color;
+                // Show() already snapshotted numberText.color into textColor
+                // BEFORE this postfix ran (see FloatingInfoText.Show body).
+                // The Update fade loop drives numberText.color from textColor
+                // every frame once life > lifetime - 0.75s — if we don't
+                // overwrite textColor too, the fade resurrects the original
+                // xpColor and our tint vanishes mid-animation.
+                __instance.textColor = color;
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogError($"VGLootTint Show.Postfix: {e}");
+            }
+        }
     }
 }
